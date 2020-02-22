@@ -1,14 +1,17 @@
 <template>
   <div>
     Available Funnels
-    <div style="display: flex" v-for="funnel in $store.state.funnels.funnels">
+    <div style="display: flex" v-for="funnel in $store.state.funnels">
       <div style="display: flex">
         {{funnel.username}}
       </div>
-      <div style="display: flex" v-if="funnel.active">
-        Funnel is leased
+      <div style="display: flex; flex-direction: column" v-if="funnel.active">
+        <div>Funnel is leased <button v-on:click="free(funnel)">Free</button></div>
+        <div>Access at {{ funnel.funnel_uri }}</div>
       </div>
       <div style="display: flex" v-if="!funnel.active">
+        <input ref="ipInput" type="text" placeholder="origin ip" v-model="incomingIp" />
+        <input type="text" placeholder="target ip and port" v-model="outgoingUri" />
         <button v-on:click="lease(funnel)">Lease</button>
       </div>
     </div>
@@ -22,53 +25,49 @@ import { Api, JsonRpc, RpcError } from 'eosjs'
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig'
 import { TextEncoder, TextDecoder } from 'util'
 import { Funnel } from './stores/funnels'
+import net from 'net'
+import { mapState } from 'vuex'
 
 @Component({
   name: 'App',
+  computed: {
+    incomingIp: {
+      get () {
+        return this.$store.state.ipField || this.$store.state.ip
+      },
+      set (value) {
+        this.$store.commit('updateIpField', value)
+      }
+    }
+  }
 })
 export default class App extends Vue {
+
+  incomingIp: string
+  outgoingUri: string = ''
+
   async lease(funnel: Funnel) {
-    await this.$store.dispatch('leaseFunnel', funnel)
+    const { incomingIp, outgoingUri } = this
+
+    if (!net.isIP(incomingIp)) {
+      alert('not an ip')
+      return
+    }
+    await this.$store.dispatch('leaseFunnel', {
+      funnel,
+      incomingIp,
+      outgoingUri
+    })
+    await this.$store.dispatch('loadFunnels')
+  }
+
+  async free(funnel: Funnel) {
+    await this.$store.dispatch('freeFunnel', { funnel })
     await this.$store.dispatch('loadFunnels')
   }
 
   async mounted() {
     await this.$store.dispatch('loadFunnels')
-    // const contractName = 'wefunnel2222'
-    // const defaultPrivateKey = '5KDs6nody8ZuxXio2ZPmiiSvJsNF5hmwZqAepDMj6VPqdqmmVrq'
-    // const signatureProvider = new JsSignatureProvider([defaultPrivateKey])
-    // const rpc = new JsonRpc('http://127.0.0.1:8888')
-    // const api = new Api({
-    //   rpc,
-    //   signatureProvider,
-    //   textDecoder: new TextDecoder(),
-    //   textEncoder: new TextEncoder(),
-    // })
-    // const [ rows ] = await rpc.get_table_rows({
-    //   json: true,
-    //   code: contractName,
-    //   scope: contractName,
-    //   table: 'funnels',
-    //   limit: 20,
-    // })
-    // this.$data.funnels = rows
-    // const result = await api.transact({
-    //   actions: [{
-    //     account: 'wefunnel2222',
-    //     name: '',
-    //     authorization: [{
-    //       actor: 'chance',
-    //       permission: 'active',
-    //     }],
-    //     data: {
-    //       user: 'chance',
-    //     }
-    //   }]
-    // }, {
-    //   blocksBehind: 3,
-    //   expireSeconds: 30,
-    // })
-    // console.log(result)
   }
 }
 </script>
