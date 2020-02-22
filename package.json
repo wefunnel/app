@@ -13,8 +13,10 @@
   "dependencies": {
     "electron-debug": "^3.0.1",
     "eosjs": "^20.0.3",
+    "eosjs-ecc": "^4.0.7",
     "vue": "^2.6.11",
-    "vue-class-component": "^7.2.3"
+    "vue-class-component": "^7.2.3",
+    "vuex": "^3.1.2"
   },
   "devDependencies": {
     "css-loader": "^3.4.2",
