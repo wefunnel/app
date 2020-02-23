@@ -1,11 +1,23 @@
 <template>
-  <div>
-    <div style="margin-bottom: 2px;">
-      Available Funnels
+  <div style="display: flex; flex-direction: row">
+    <div style="display: flex; flex-direction: column">
+      <div style="display: flex; justify-content: space-between;">
+        <div style="margin-bottom: 2px;">
+          Available Funnels
+        </div>
+        <div style="flex: 1" />
+        <div>
+          Visible IP: {{$store.state.ip}}
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <FunnelCell v-for="funnel in $store.state.funnels":funnel="funnel" />
+      </div>
     </div>
-    <div style="display: flex" v-for="funnel in $store.state.funnels">
-      <FunnelCell :funnel="funnel" />
-    </div>
+    <div style="width: 10px" />
+    <div style="background-color: black; height: 80vh; width: 1px" />
+    <div style="width: 10px" />
+    <LeaseChain />
   </div>
 </template>
 
@@ -20,11 +32,12 @@ import net from 'net'
 import { mapState } from 'vuex'
 import Header from './components/Header.vue'
 import FunnelCell from './components/FunnelCell.vue'
+import LeaseChain from './components/LeaseChain'
 
 @Component({
   name: 'App',
   components: {
-    FunnelCell, Header
+    FunnelCell, Header, LeaseChain
   },
 })
 export default class App extends Vue {

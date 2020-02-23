@@ -10,8 +10,12 @@
       </div>
     </div>
     <div style="width: 30px;" />
-    <div v-if="funnel.active" style="display: flex; flex-direction: column">
+    <div v-if="funnel.active" style="display: flex; flex-direction: column; align-items: center">
       <div>Funnel is leased <button v-on:click="free(funnel)">Free</button></div>
+      <div style="height: 10px;" />
+      <div class="incomingUri">{{funnel.incoming_uri}}</div>
+      <div>\/</div>
+      <div class="outgoingUri">{{funnel.outgoing_uri}}</div>
       <div style="height: 10px;" />
       <div>Access at {{ funnel.funnel_uri }}</div>
     </div>
@@ -33,16 +37,6 @@ import net from 'net'
 @Component({
   name: 'FunnelCell',
   props: ['funnel'],
-  computed: {
-    incomingIp: {
-      get () {
-        return this.$store.state.ipField || this.$store.state.ip
-      },
-      set (value) {
-        this.$store.commit('updateIpField', value)
-      }
-    }
-  }
 })
 export default class FunnelCell extends Vue {
 
@@ -78,5 +72,17 @@ export default class FunnelCell extends Vue {
   margin: 2px;
   border: 1px solid black;
   padding: 2px;
+}
+.incomingUri {
+  background-color: green;
+  padding: 4px;
+  border-radius: 4px;
+  color: white;
+}
+.outgoingUri {
+  background-color: green;
+  padding: 4px;
+  border-radius: 4px;
+  color: white;
 }
 </style>

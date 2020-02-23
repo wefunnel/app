@@ -14,19 +14,42 @@ export interface Funnel {
   active: 0|1
   client: string
   funnel_uri?: string
+  incoming_uri?: string
+  outgoing_uri?: string
 }
 
 const RPC_URL = 'http://127.0.0.1:8888'
 
-async function publicKeyForUsername(username: string) {
+export async function publicKeyForUsername(username: string) {
   const rpc = new JsonRpc(RPC_URL)
   const { permissions } = await rpc.get_account(username)
   const ownerPerm = permissions.find((perm: any) => perm.perm_name === 'owner')
   return PublicKey(ownerPerm.required_auth.keys[0].key)
 }
 
-export async function decryptFunnelUri(owner: string, uri: string) {
-  const ownerKey = await publicKeyForUsername(owner)
+export async function decryptOutgoingUri(ownerKey: string, uri: string) {
+  const { nonce, message, checksum } = JSON.parse(uri)
+  return Aes.decrypt(
+    store.state.defaultPrivateKey,
+    ownerKey.toString(),
+    new Long(nonce.low, nonce.high, nonce.unsigned),
+    Buffer.from(message, 'base64'),
+    checksum
+  ).toString()
+}
+
+export async function decryptIncomingUri(ownerKey: string, uri: string) {
+  const { nonce, message, checksum } = JSON.parse(uri)
+  return Aes.decrypt(
+    store.state.defaultPrivateKey,
+    ownerKey.toString(),
+    new Long(nonce.low, nonce.high, nonce.unsigned),
+    Buffer.from(message, 'base64'),
+    checksum
+  ).toString()
+}
+
+export async function decryptFunnelUri(ownerKey: string, uri: string) {
   const { nonce, message, checksum } = JSON.parse(uri)
   return Aes.decrypt(
     store.state.defaultPrivateKey,
