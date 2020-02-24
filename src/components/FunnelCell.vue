@@ -40,7 +40,7 @@ import net from 'net'
 })
 export default class FunnelCell extends Vue {
 
-  incomingIp: string
+  incomingIp: string = ''
   outgoingUri: string = ''
 
   async lease(funnel: Funnel) {

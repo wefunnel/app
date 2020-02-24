@@ -3,7 +3,7 @@ import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig'
 import { TextEncoder, TextDecoder } from 'util'
 const { Aes, PublicKey, ...ecc} = require('eosjs-ecc')
 import { Long } from 'bytebuffer'
-import { store } from '..'
+import store from '.'
 
 export interface Funnel {
   username: string
@@ -27,30 +27,8 @@ export async function publicKeyForUsername(username: string) {
   return PublicKey(ownerPerm.required_auth.keys[0].key)
 }
 
-export async function decryptOutgoingUri(ownerKey: string, uri: string) {
-  const { nonce, message, checksum } = JSON.parse(uri)
-  return Aes.decrypt(
-    store.state.defaultPrivateKey,
-    ownerKey.toString(),
-    new Long(nonce.low, nonce.high, nonce.unsigned),
-    Buffer.from(message, 'base64'),
-    checksum
-  ).toString()
-}
-
-export async function decryptIncomingUri(ownerKey: string, uri: string) {
-  const { nonce, message, checksum } = JSON.parse(uri)
-  return Aes.decrypt(
-    store.state.defaultPrivateKey,
-    ownerKey.toString(),
-    new Long(nonce.low, nonce.high, nonce.unsigned),
-    Buffer.from(message, 'base64'),
-    checksum
-  ).toString()
-}
-
-export async function decryptFunnelUri(ownerKey: string, uri: string) {
-  const { nonce, message, checksum } = JSON.parse(uri)
+export async function decryptData(ownerKey: string, data: string) {
+  const { nonce, message, checksum } = JSON.parse(data)
   return Aes.decrypt(
     store.state.defaultPrivateKey,
     ownerKey.toString(),
@@ -83,6 +61,42 @@ export async function listFunnels(offset = 0, limit = 20) {
     table: 'funnels',
     limit,
   })
+  return rows
+}
+
+/**
+ * All of the relays being leased by the current user
+ **/
+export async function listOwnedRelays(offset = 0, limit = 100) {
+  const rpc = new JsonRpc(RPC_URL)
+  const { rows } = await rpc.get_table_rows({
+    json: true,
+    code: store.state.contractName,
+    scope: store.state.contractName,
+    table: 'funnels',
+    limit,
+    index_position: 'secondary',
+    upper_bound: store.state.username,
+    lower_bound: store.state.username,
+    key_type: 'i64'
+  })
+  console.log(rows)
+  return rows
+}
+
+export async function listAvailableFunnels(offset = 0, limit = 20) {
+  const rpc = new JsonRpc(RPC_URL)
+  const { rows } = await rpc.get_table_rows({
+    json: true,
+    code: store.state.contractName,
+    scope: store.state.contractName,
+    table: 'funnels',
+    index_position: 'tertiary',
+    limit,
+    upper_bound: 0,
+    key_type: 'i64'
+  })
+  console.log(rows)
   return rows
 }
 
@@ -172,4 +186,26 @@ export async function leaseFunnel(owner: string, incomingIp: string, outgoingUri
     blocksBehind: 3,
     expireSeconds: 30,
   })
+}
+
+export async function funnelConfirm(username: string) {
+  const relays = await listOwnedRelays()
+  // Username should be unique in owned relays, e.g. not leasing 2 machines from the same user
+  const relay = relays.find((_relay: Funnel) => username === _relay.username)
+  if (!relay) {
+    console.log('No relays owned by user')
+    return
+  }
+  if (!relay.active) {
+    console.log('Relay is not active')
+    return
+  }
+  if (!relay.funnel_uri_enc) {
+    await new Promise(r => setTimeout(r, 2500))
+    await funnelConfirm(username)
+    return
+  }
+  if (relay.funnel_uri) {
+    return
+  }
 }

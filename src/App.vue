@@ -17,7 +17,7 @@
     <div style="width: 10px" />
     <div style="background-color: black; height: 80vh; width: 1px" />
     <div style="width: 10px" />
-    <LeaseChain />
+    <BuildFunnel />
   </div>
 </template>
 
@@ -32,12 +32,12 @@ import net from 'net'
 import { mapState } from 'vuex'
 import Header from './components/Header.vue'
 import FunnelCell from './components/FunnelCell.vue'
-import LeaseChain from './components/LeaseChain'
+import BuildFunnel from './components/BuildFunnel'
 
 @Component({
   name: 'App',
   components: {
-    FunnelCell, Header, LeaseChain
+    FunnelCell, Header, BuildFunnel 
   },
 })
 export default class App extends Vue {
