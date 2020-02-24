@@ -6,13 +6,21 @@ import { Long } from 'bytebuffer'
 import store from '.'
 
 export interface Funnel {
-  username: string
+  owner: string
+  client: string
+  rate: number
+  active: 0|1
+  total_slots: number
+  available_slots: number
+}
+
+export interface Route {
+  owner: string
+  client: string
   rate: number
   incoming_uri_enc: string
   outgoing_uri_enc: string
   funnel_uri_enc: string
-  active: 0|1
-  client: string
   funnel_uri?: string
   incoming_uri?: string
   outgoing_uri?: string
@@ -67,15 +75,15 @@ export async function listFunnels(offset = 0, limit = 20) {
 /**
  * All of the relays being leased by the current user
  **/
-export async function listOwnedRelays(offset = 0, limit = 100) {
+export async function listOwnedRoutes(offset = 0, limit = 100) {
   const rpc = new JsonRpc(RPC_URL)
   const { rows } = await rpc.get_table_rows({
     json: true,
     code: store.state.contractName,
     scope: store.state.contractName,
-    table: 'funnels',
+    table: 'routes',
     limit,
-    index_position: 'secondary',
+    index_position: 'tertiary',
     upper_bound: store.state.username,
     lower_bound: store.state.username,
     key_type: 'i64'
@@ -91,16 +99,15 @@ export async function listAvailableFunnels(offset = 0, limit = 20) {
     code: store.state.contractName,
     scope: store.state.contractName,
     table: 'funnels',
-    index_position: 'tertiary',
+    index_position: 'fourth',
     limit,
-    upper_bound: 0,
     key_type: 'i64'
   })
   console.log(rows)
   return rows
 }
 
-export async function freeFunnel(owner: string) {
+export async function freeRoute(owner: string) {
   const rpc = new JsonRpc(RPC_URL)
   const signatureProvider = new JsSignatureProvider([store.state.defaultPrivateKey])
   const api = new Api({
@@ -112,13 +119,14 @@ export async function freeFunnel(owner: string) {
   await api.transact({
     actions: [{
       account: store.state.contractName,
-      name: 'freefunnel',
+      name: 'freeclient',
       authorization: [{
         actor: store.state.username,
         permission: 'active',
       }],
       data: {
-        funnel_username: owner,
+        owner: owner,
+        client: store.state.username,
       }
     }]
   }, {
@@ -127,7 +135,7 @@ export async function freeFunnel(owner: string) {
   })
 }
 
-export async function leaseFunnel(owner: string, incomingIp: string, outgoingUri: string) {
+export async function leaseFunnel(owner: string, incomingIp: string = '', outgoingUri: string = '') {
   const rpc = new JsonRpc(RPC_URL)
   const { permissions } = await rpc.get_account(owner)
   const ownerPerm = permissions.find((perm: any) => perm.perm_name === 'owner')
@@ -158,8 +166,8 @@ export async function leaseFunnel(owner: string, incomingIp: string, outgoingUri
         permission: 'active',
       }],
       data: {
-        funnel_username: owner,
-        username: store.state.username,
+        owner,
+        client: store.state.username,
       },
     }, {
       account: store.state.contractName,
@@ -169,7 +177,8 @@ export async function leaseFunnel(owner: string, incomingIp: string, outgoingUri
         permission: 'active',
       }],
       data: {
-        username: owner,
+        owner,
+        client: store.state.username,
         incoming_uri_enc: JSON.stringify({
           nonce: incoming_enc.nonce,
           message: incoming_enc.message.toString('base64'),
@@ -189,23 +198,19 @@ export async function leaseFunnel(owner: string, incomingIp: string, outgoingUri
 }
 
 export async function funnelConfirm(username: string) {
-  const relays = await listOwnedRelays()
+  const routes = await listOwnedRoutes()
   // Username should be unique in owned relays, e.g. not leasing 2 machines from the same user
-  const relay = relays.find((_relay: Funnel) => username === _relay.username)
-  if (!relay) {
-    console.log('No relays owned by user')
+  const route = routes.find((_route: any) => username === _route.client)
+  if (!route) {
+    console.log('No routes owned by user')
     return
   }
-  if (!relay.active) {
-    console.log('Relay is not active')
-    return
-  }
-  if (!relay.funnel_uri_enc) {
+  if (!route.funnel_uri_enc) {
     await new Promise(r => setTimeout(r, 2500))
     await funnelConfirm(username)
     return
   }
-  if (relay.funnel_uri) {
+  if (route.funnel_uri) {
     return
   }
 }

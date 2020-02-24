@@ -37,13 +37,21 @@ import BuildFunnel from './components/BuildFunnel'
 @Component({
   name: 'App',
   components: {
-    FunnelCell, Header, BuildFunnel 
+    FunnelCell, Header, BuildFunnel
   },
 })
 export default class App extends Vue {
 
   async mounted() {
     await this.$store.dispatch('loadFunnels')
+    for (;;) {
+      try {
+        await this.$store.dispatch('loadRoutes')
+        await new Promise(r => setTimeout(r, 5000))
+      } catch (err) {
+        console.log('Error loading routes: ', err)
+      }
+    }
   }
 }
 </script>

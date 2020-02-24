@@ -2,11 +2,13 @@ import Vue from 'vue'
 import Vuex from 'vuex'
 import {
   Funnel,
+  Route,
   listFunnels,
   leaseFunnel,
-  freeFunnel,
+  freeRoute,
   decryptData,
   publicKeyForUsername,
+  listOwnedRoutes,
 } from './funnels'
 
 Vue.use(Vuex)
@@ -19,7 +21,8 @@ const store = new Vuex.Store({
     username: 'seetheory333',
     publicKey: '',
     funnels: [] as Funnel[],
-    activeChain: [] as Funnel[]
+    activeChain: [] as Funnel[],
+    routes: [] as Route[]
   },
   mutations: {
     updateIpField: (state: any, value: string) => {
@@ -28,27 +31,32 @@ const store = new Vuex.Store({
   },
   actions: {
     loadFunnels: async ({ state }: any) => {
-      const _funnels: Funnel[] = await listFunnels()
-      const funnels = await Promise.all(_funnels.map(async (funnel) => {
-        if (funnel.client === state.username && funnel.funnel_uri_enc) {
-          const ownerKey = await publicKeyForUsername(funnel.username)
-          funnel.funnel_uri = await decryptData(ownerKey, funnel.funnel_uri_enc)
-          funnel.incoming_uri = await decryptData(ownerKey, funnel.incoming_uri_enc)
-          funnel.outgoing_uri = await decryptData(ownerKey, funnel.outgoing_uri_enc)
-          // const incoming = await decr
+      state.funnels = await listFunnels()
+    },
+    loadRoutes: async ({ state }: any) => {
+      const _routes: Route[] = await listOwnedRoutes()
+      state.routes = await Promise.all(_routes.map(async (route) => {
+        const ownerKey = await publicKeyForUsername(route.owner)
+        if (route.funnel_uri_enc) {
+          route.funnel_uri = await decryptData(ownerKey, route.funnel_uri_enc)
         }
-        return funnel
+        if (route.incoming_uri_enc) {
+          route.incoming_uri = await decryptData(ownerKey, route.incoming_uri_enc)
+        }
+        if (route.outgoing_uri_enc) {
+          route.outgoing_uri = await decryptData(ownerKey, route.outgoing_uri_enc)
+        }
+        return route
       }))
-      state.funnels = funnels
     },
     leaseFunnel: async ({ state, dispatch }: any, { funnel, incomingIp, outgoingUri }: any) => {
-      await leaseFunnel(funnel.username, incomingIp, outgoingUri)
+      await leaseFunnel(funnel.owner, incomingIp, outgoingUri)
       setTimeout(() => {
         dispatch('loadFunnels')
       }, 10000)
     },
-    freeFunnel: async ({}, { funnel }: any) => {
-      await freeFunnel(funnel.username)
+    freeRoute: async ({}, route: any) => {
+      await freeRoute(route.owner)
     },
   }
 })

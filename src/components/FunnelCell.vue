@@ -2,24 +2,18 @@
   <div class="outer">
     <div class="display: flex; flex-direction: column">
       <div class="username">
-        Offered by {{funnel.username}}
+        Offered by {{funnel.owner}}
       </div>
       <div style="height:10px" />
       <div class="display: flex">
-        Rate: {{funnel.rate}} tokens per hour
+        {{funnel.rate}} tokens per hour
+      </div>
+      <div class="display: flex">
+        {{funnel.available_slots}}/{{funnel.total_slots}} slots open
       </div>
     </div>
     <div style="width: 30px;" />
-    <div v-if="funnel.active" style="display: flex; flex-direction: column; align-items: center">
-      <div>Funnel is leased <button v-on:click="free(funnel)">Free</button></div>
-      <div style="height: 10px;" />
-      <div class="incomingUri">{{funnel.incoming_uri}}</div>
-      <div>\/</div>
-      <div class="outgoingUri">{{funnel.outgoing_uri}}</div>
-      <div style="height: 10px;" />
-      <div>Access at {{ funnel.funnel_uri }}</div>
-    </div>
-    <div v-if="!funnel.active" style="display: flex; flex-direction: column">
+    <div style="display: flex; flex-direction: column">
       <input ref="ipInput" type="text" placeholder="origin ip" v-model="incomingIp" />
       <input type="text" placeholder="target ip and port" v-model="outgoingUri" />
       <div style="height: 10px;" />
@@ -55,11 +49,6 @@ export default class FunnelCell extends Vue {
       incomingIp,
       outgoingUri
     })
-    await this.$store.dispatch('loadFunnels')
-  }
-
-  async free(funnel: Funnel) {
-    await this.$store.dispatch('freeFunnel', { funnel })
     await this.$store.dispatch('loadFunnels')
   }
 

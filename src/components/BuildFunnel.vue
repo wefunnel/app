@@ -12,8 +12,12 @@
       </select>
       relays
     </div>
+    <div v-for="route of $store.state.routes">
+      {{route.incoming_uri}} -> {{route.outgoingUri}}
+    </div>
     <input type="text" v-model="targetUri" />
     <button v-on:click="beginBuilding()">Start</button>
+    <RouteCell v-for="route of $store.state.routes" :route="route" />
   </div>
 </template>
 
@@ -21,17 +25,20 @@
 import Vue from 'vue'
 import Component from 'vue-class-component'
 import FunnelCell from './FunnelCell'
+import RouteCell from './RouteCell'
 import {
   decryptData,
   leaseFunnel,
-  listOwnedRelays,
-  listAvailableFunnels
+  listOwnedRoutes,
+  listAvailableFunnels,
+  funnelConfirm,
+  publicKeyForUsername
 } from '../stores/funnels'
 import _ from 'lodash'
 
 @Component({
   name: 'BuildChain',
-  components: { FunnelCell }
+  components: { FunnelCell, RouteCell }
 })
 export default class LeaseChain extends Vue {
   relayCount: string = '2'
@@ -43,26 +50,32 @@ export default class LeaseChain extends Vue {
       this.$store.state.ip,
     ]
     try {
-      const relays = await listAvailableFunnels()
-      const ownedRelays = await listOwnedRelays()
-      const ownedRelayNames = _.map(ownedRelays, 'username')
+      const routes = await listAvailableFunnels()
+      const ownedRoutes = await listOwnedRoutes()
+      const routeOwnerNames = _.map(ownedRoutes, 'owner')
       for (let i = 0; i < +this.relayCount; i++) {
-        const availableRelays = _.filter(relays, (relay) => {
-          return ownedRelayNames.indexOf(relay.username) === -1
+        const availableRoutes = _.filter(routes, (route) => {
+          return routeOwnerNames.indexOf(route.owner) === -1
         })
-        // Try the first, maybe user random logic in the future
-        const index = _.random(0, availableRelays.length)
-        const relay = availableRelays[index]
-        await leaseFunnel(relay.username, addresses[i])
+        if (availableRoutes.length === 0) {
+          alert('Not enough funnels available')
+          break
+        }
+        const index = _.random(0, availableRoutes.length - 1)
+        const route = availableRoutes[index]
+        await leaseFunnel(route.owner, addresses[i])
         console.log('Funnel leased, awaiting handshake')
-        await funnelConfirm(relay.username)
-        ownedRelayNames.push(relay.username)
-        const ip = await decryptData(ownerKey, funnel.funnel_uri_enc)
+        await new Promise(r => setTimeout(r, 3000))
+        await funnelConfirm(route.owner)
+        routeOwnerNames.push(route.owner)
+        const ownerKey = await publicKeyForUsername(route.owner)
+        const ip = await decryptData(ownerKey, route.funnel_uri_enc)
         addresses.push(ip)
         // Find next relay
         console.log(i)
       }
     } catch (err) {
+      console.log(err)
       alert('Error building a relay')
     }
   }
